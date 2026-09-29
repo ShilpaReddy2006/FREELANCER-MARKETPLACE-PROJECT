@@ -1,5 +1,7 @@
 package com.freelancemarketplace.auth.controller;
 
+import com.freelancemarketplace.auth.dto.LoginRequest;
+import com.freelancemarketplace.auth.dto.LoginResponse;
 import com.freelancemarketplace.auth.dto.RegisterRequest;
 import com.freelancemarketplace.auth.dto.RegisterResponse;
 import com.freelancemarketplace.auth.service.AuthService;
@@ -20,6 +22,10 @@ public class AuthController {
         this.authService = authService;
     }
 
+    // -------------------------
+    // REGISTER
+    // -------------------------
+
     @PostMapping("/register")
     public ResponseEntity<RegisterResponse> register(
             @Valid @RequestBody RegisterRequest request) {
@@ -29,5 +35,18 @@ public class AuthController {
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(response);
+    }
+
+    // -------------------------
+    // LOGIN
+    // -------------------------
+
+    @PostMapping("/login")
+    public ResponseEntity<LoginResponse> login(
+            @Valid @RequestBody LoginRequest request) {
+
+        LoginResponse response = authService.login(request);
+
+        return ResponseEntity.ok(response);
     }
 }

@@ -1,6 +1,7 @@
 package com.freelancemarketplace.user.repository;
 
 import com.freelancemarketplace.user.entity.User;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
