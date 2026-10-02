@@ -2,6 +2,8 @@ package com.freelancemarketplace.freelancer.service;
 
 import org.springframework.stereotype.Service;
 
+import com.freelancemarketplace.exception.ResourceAlreadyExistsException;
+import com.freelancemarketplace.exception.ResourceNotFoundException;
 import com.freelancemarketplace.freelancer.dto.FreelancerProfileRequest;
 import com.freelancemarketplace.freelancer.dto.FreelancerProfileResponse;
 import com.freelancemarketplace.freelancer.entity.FreelancerProfile;
@@ -23,20 +25,23 @@ public class FreelancerProfileService {
         this.userRepository = userRepository;
     }
 
+    // Create freelancer profile
     public FreelancerProfileResponse createProfile(
             Long userId,
             FreelancerProfileRequest request) {
 
         // Check whether user already has a freelancer profile
         if (freelancerProfileRepository.existsByUserId(userId)) {
-            throw new RuntimeException(
+
+            throw new ResourceAlreadyExistsException(
                     "Freelancer profile already exists");
         }
 
-        // Find the authenticated user
+        // Find authenticated user
         User user = userRepository.findById(userId)
                 .orElseThrow(() ->
-                        new RuntimeException("User not found"));
+                        new ResourceNotFoundException(
+                                "User not found"));
 
         // Create freelancer profile
         FreelancerProfile profile = new FreelancerProfile();
@@ -62,13 +67,14 @@ public class FreelancerProfileService {
         );
     }
 
+    // Get freelancer profile
     public FreelancerProfileResponse getProfile(Long userId) {
 
         FreelancerProfile profile =
                 freelancerProfileRepository
                         .findByUserId(userId)
                         .orElseThrow(() ->
-                                new RuntimeException(
+                                new ResourceNotFoundException(
                                         "Freelancer profile not found"));
 
         return new FreelancerProfileResponse(

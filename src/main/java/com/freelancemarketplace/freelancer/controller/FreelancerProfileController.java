@@ -23,6 +23,7 @@ public class FreelancerProfileController {
         this.freelancerProfileService = freelancerProfileService;
     }
 
+    // Create freelancer profile
     @PostMapping
     public ResponseEntity<FreelancerProfileResponse> createProfile(
             @Valid @RequestBody FreelancerProfileRequest request,
@@ -41,11 +42,23 @@ public class FreelancerProfileController {
                 .body(response);
     }
 
+    // Get logged-in user's profile
     @GetMapping
     public ResponseEntity<FreelancerProfileResponse> getProfile(
             Authentication authentication) {
 
         Long userId = (Long) authentication.getPrincipal();
+
+        FreelancerProfileResponse response =
+                freelancerProfileService.getProfile(userId);
+
+        return ResponseEntity.ok(response);
+    }
+
+    // Get freelancer profile by user ID
+    @GetMapping("/{userId}")
+    public ResponseEntity<FreelancerProfileResponse> getProfileByUserId(
+            @PathVariable Long userId) {
 
         FreelancerProfileResponse response =
                 freelancerProfileService.getProfile(userId);
