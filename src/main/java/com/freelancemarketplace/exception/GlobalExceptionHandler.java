@@ -41,4 +41,17 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.NOT_FOUND)
                 .body(errorResponse);
     }
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<ErrorResponse> handleForbidden(ForbiddenException exception) {
+
+        ErrorResponse errorResponse = new ErrorResponse(
+            HttpStatus.FORBIDDEN.value(),
+            exception.getMessage(),
+            LocalDateTime.now()
+        );
+
+        return ResponseEntity
+            .status(HttpStatus.FORBIDDEN)
+            .body(errorResponse);
+    }
 }
