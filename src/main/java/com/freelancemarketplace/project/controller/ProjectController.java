@@ -52,4 +52,13 @@ public class ProjectController {
 
         return ResponseEntity.ok(projects);
     }
+    @GetMapping("/{projectId}")
+    public ResponseEntity<ProjectResponse> getProjectById(
+            @PathVariable Long projectId) {
+
+        ProjectResponse response =
+            projectService.getProjectById(projectId);
+
+        return ResponseEntity.ok(response);
+    }
 }

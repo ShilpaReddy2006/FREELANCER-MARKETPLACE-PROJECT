@@ -102,4 +102,22 @@ public class ProjectService {
                 ))
                 .toList();
     }
+    public ProjectResponse getProjectById(Long projectId) {
+
+        Project project = projectRepository.findById(projectId)
+            .orElseThrow(() ->
+                new ResourceNotFoundException("Project not found"));
+
+        return new ProjectResponse(
+            project.getId(),
+            project.getClient().getId(),
+            project.getTitle(),
+            project.getDescription(),
+            project.getBudget(),
+            project.getDeadline(),
+            project.getStatus(),
+            project.getCreatedAt(),
+            project.getUpdatedAt()
+        );
+    }
 }

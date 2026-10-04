@@ -6,6 +6,12 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 
 import com.freelancemarketplace.exception.ForbiddenException;
+import java.util.List;
+import java.time.LocalDateTime;
+
+import org.springframework.transaction.annotation.Transactional;
+
+import com.freelancemarketplace.exception.ForbiddenException;
 
 import com.freelancemarketplace.application.dto.ApplicationRequest;
 import com.freelancemarketplace.application.dto.ApplicationResponse;
@@ -141,5 +147,88 @@ public class ApplicationService {
                 application.getUpdatedAt()
             ))
             .toList();
+    }
+    @Transactional
+    public ApplicationResponse acceptApplication(
+            Long clientId,
+            Long projectId,
+            Long applicationId) {
+
+        // 1. Find the project
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Project not found"));
+
+        // 2. Check whether logged-in client owns the project
+        if (!project.getClient().getId().equals(clientId)) {
+            throw new ForbiddenException(
+                    "You are not allowed to manage applications for this project");
+        }
+
+        // 3. Project must be OPEN
+        if (project.getStatus() != ProjectStatus.OPEN) {
+            throw new RuntimeException(
+                    "Applications can only be accepted for open projects");
+        }
+
+        // 4. Find the application
+        Application application = applicationRepository.findById(applicationId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Application not found"));
+
+        // 5. Make sure application belongs to this project
+        if (!application.getProject().getId().equals(projectId)) {
+            throw new ForbiddenException(
+                    "This application does not belong to this project");
+        }
+
+        // 6. Application must be PENDING
+        if (application.getStatus() != ApplicationStatus.PENDING) {
+            throw new RuntimeException(
+                    "Only pending applications can be accepted");
+        }
+
+        // 7. Accept selected application
+        application.setStatus(ApplicationStatus.ACCEPTED);
+        application.setUpdatedAt(LocalDateTime.now());
+
+        // 8. Project becomes IN_PROGRESS
+        project.setStatus(ProjectStatus.IN_PROGRESS);
+        project.setUpdatedAt(LocalDateTime.now());
+
+        projectRepository.save(project);
+
+        // 9. Reject all other pending applications
+        List<Application> pendingApplications =
+                applicationRepository.findByProjectIdAndStatus(
+                        projectId,
+                        ApplicationStatus.PENDING);
+
+        for (Application pendingApplication : pendingApplications) {
+
+            if (!pendingApplication.getId().equals(applicationId)) {
+
+                pendingApplication.setStatus(ApplicationStatus.REJECTED);
+                pendingApplication.setUpdatedAt(LocalDateTime.now());
+
+                applicationRepository.save(pendingApplication);
+            }
+        }
+
+        // 10. Save accepted application
+        Application savedApplication =
+                applicationRepository.save(application);
+
+        // 11. Return response
+        return new ApplicationResponse(
+                savedApplication.getId(),
+                savedApplication.getProject().getId(),
+                savedApplication.getFreelancer().getId(),
+                savedApplication.getProposal(),
+                savedApplication.getProposedBudget(),
+                savedApplication.getStatus(),
+                savedApplication.getCreatedAt(),
+                savedApplication.getUpdatedAt()
+        );
     }
 }

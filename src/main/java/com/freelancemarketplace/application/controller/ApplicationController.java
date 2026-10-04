@@ -25,7 +25,6 @@ public class ApplicationController {
         this.applicationService = applicationService;
     }
 
-    // Freelancer applies to project
     @PostMapping("/{projectId}/applications")
     public ResponseEntity<ApplicationResponse> applyToProject(
             @PathVariable Long projectId,
@@ -39,26 +38,45 @@ public class ApplicationController {
                 applicationService.applyToProject(
                         freelancerId,
                         projectId,
-                        request
-                );
+                        request);
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(response);
     }
-    @GetMapping("/{projectId}/applications")
-    public ResponseEntity<List<ApplicationResponse>> getApplicationsForProject(
-            @PathVariable Long projectId,
-            Authentication authentication) {
 
-        Long clientId = (Long) authentication.getPrincipal();
+    @GetMapping("/{projectId}/applications")
+    public ResponseEntity<List<ApplicationResponse>>
+            getApplicationsForProject(
+                    @PathVariable Long projectId,
+                    Authentication authentication) {
+
+        Long clientId =
+                (Long) authentication.getPrincipal();
 
         List<ApplicationResponse> applications =
-            applicationService.getApplicationsForProject(
-                clientId,
-                projectId
-            );
+                applicationService.getApplicationsForProject(
+                        clientId,
+                        projectId);
 
         return ResponseEntity.ok(applications);
+    }
+
+    @PostMapping("/{projectId}/applications/{applicationId}/accept")
+    public ResponseEntity<ApplicationResponse> acceptApplication(
+            @PathVariable Long projectId,
+            @PathVariable Long applicationId,
+            Authentication authentication) {
+
+        Long clientId =
+                (Long) authentication.getPrincipal();
+
+        ApplicationResponse response =
+                applicationService.acceptApplication(
+                        clientId,
+                        projectId,
+                        applicationId);
+
+        return ResponseEntity.ok(response);
     }
 }
