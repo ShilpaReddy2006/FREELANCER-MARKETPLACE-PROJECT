@@ -54,4 +54,19 @@ public class GlobalExceptionHandler {
             .status(HttpStatus.FORBIDDEN)
             .body(errorResponse);
     }
+    @ExceptionHandler(BadRequestException.class)
+    public ResponseEntity<ErrorResponse> handleBadRequest(
+            BadRequestException exception) {
+
+        ErrorResponse errorResponse =
+            new ErrorResponse(
+                HttpStatus.BAD_REQUEST.value(),
+                exception.getMessage(),
+                LocalDateTime.now()
+            );
+
+        return ResponseEntity
+            .status(HttpStatus.BAD_REQUEST)
+            .body(errorResponse);
+    }
 }

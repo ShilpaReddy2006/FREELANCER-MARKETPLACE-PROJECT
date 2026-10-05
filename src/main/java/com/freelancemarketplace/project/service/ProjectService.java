@@ -1,11 +1,11 @@
 package com.freelancemarketplace.project.service;
 
 import java.time.LocalDateTime;
-
-import org.springframework.stereotype.Service;
-import java.time.LocalDateTime;
 import java.util.List;
 
+import org.springframework.stereotype.Service;
+
+import com.freelancemarketplace.exception.BadRequestException;
 import com.freelancemarketplace.exception.ResourceNotFoundException;
 import com.freelancemarketplace.project.dto.ProjectRequest;
 import com.freelancemarketplace.project.dto.ProjectResponse;
@@ -43,7 +43,8 @@ public class ProjectService {
 
         // 2. Check CLIENT role
         if (client.getRole() != Role.CLIENT) {
-            throw new RuntimeException(
+
+            throw new BadRequestException(
                     "Only clients can create projects");
         }
 
@@ -82,7 +83,8 @@ public class ProjectService {
                 savedProject.getUpdatedAt()
         );
     }
- // Get all open projects
+
+    // Get all open projects
     public List<ProjectResponse> getOpenProjects() {
 
         List<Project> projects =
@@ -102,22 +104,25 @@ public class ProjectService {
                 ))
                 .toList();
     }
+
+    // Get project by ID
     public ProjectResponse getProjectById(Long projectId) {
 
         Project project = projectRepository.findById(projectId)
-            .orElseThrow(() ->
-                new ResourceNotFoundException("Project not found"));
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Project not found"));
 
         return new ProjectResponse(
-            project.getId(),
-            project.getClient().getId(),
-            project.getTitle(),
-            project.getDescription(),
-            project.getBudget(),
-            project.getDeadline(),
-            project.getStatus(),
-            project.getCreatedAt(),
-            project.getUpdatedAt()
+                project.getId(),
+                project.getClient().getId(),
+                project.getTitle(),
+                project.getDescription(),
+                project.getBudget(),
+                project.getDeadline(),
+                project.getStatus(),
+                project.getCreatedAt(),
+                project.getUpdatedAt()
         );
     }
 }

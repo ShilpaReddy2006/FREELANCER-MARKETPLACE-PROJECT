@@ -1,23 +1,18 @@
 package com.freelancemarketplace.application.service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import org.springframework.stereotype.Service;
-import java.util.List;
-
-import com.freelancemarketplace.exception.ForbiddenException;
-import java.util.List;
-import java.time.LocalDateTime;
-
 import org.springframework.transaction.annotation.Transactional;
-
-import com.freelancemarketplace.exception.ForbiddenException;
 
 import com.freelancemarketplace.application.dto.ApplicationRequest;
 import com.freelancemarketplace.application.dto.ApplicationResponse;
 import com.freelancemarketplace.application.entity.Application;
 import com.freelancemarketplace.application.entity.ApplicationStatus;
 import com.freelancemarketplace.application.repository.ApplicationRepository;
+import com.freelancemarketplace.exception.BadRequestException;
+import com.freelancemarketplace.exception.ForbiddenException;
 import com.freelancemarketplace.exception.ResourceAlreadyExistsException;
 import com.freelancemarketplace.exception.ResourceNotFoundException;
 import com.freelancemarketplace.project.entity.Project;
@@ -58,7 +53,8 @@ public class ApplicationService {
 
         // 2. Check freelancer role
         if (freelancer.getRole() != Role.FREELANCER) {
-            throw new RuntimeException(
+
+            throw new BadRequestException(
                     "Only freelancers can apply to projects");
         }
 
@@ -70,7 +66,8 @@ public class ApplicationService {
 
         // 4. Project must be OPEN
         if (project.getStatus() != ProjectStatus.OPEN) {
-            throw new RuntimeException(
+
+            throw new BadRequestException(
                     "Applications are allowed only for open projects");
         }
 
@@ -118,36 +115,41 @@ public class ApplicationService {
                 savedApplication.getUpdatedAt()
         );
     }
+
+    // Client views applications for their project
     public List<ApplicationResponse> getApplicationsForProject(
             Long clientId,
             Long projectId) {
 
         Project project = projectRepository.findById(projectId)
-            .orElseThrow(() ->
-                new ResourceNotFoundException("Project not found"));
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Project not found"));
 
         if (!project.getClient().getId().equals(clientId)) {
+
             throw new ForbiddenException(
-                "You are not allowed to view applications for this project"
-            );
+                    "You are not allowed to view applications for this project");
         }
 
         List<Application> applications =
-            applicationRepository.findByProjectId(projectId);
+                applicationRepository.findByProjectId(projectId);
 
         return applications.stream()
-            .map(application -> new ApplicationResponse(
-                application.getId(),
-                application.getProject().getId(),
-                application.getFreelancer().getId(),
-                application.getProposal(),
-                application.getProposedBudget(),
-                application.getStatus(),
-                application.getCreatedAt(),
-                application.getUpdatedAt()
-            ))
-            .toList();
+                .map(application -> new ApplicationResponse(
+                        application.getId(),
+                        application.getProject().getId(),
+                        application.getFreelancer().getId(),
+                        application.getProposal(),
+                        application.getProposedBudget(),
+                        application.getStatus(),
+                        application.getCreatedAt(),
+                        application.getUpdatedAt()
+                ))
+                .toList();
     }
+
+    // Client accepts an application
     @Transactional
     public ApplicationResponse acceptApplication(
             Long clientId,
@@ -157,34 +159,41 @@ public class ApplicationService {
         // 1. Find the project
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() ->
-                        new ResourceNotFoundException("Project not found"));
+                        new ResourceNotFoundException(
+                                "Project not found"));
 
         // 2. Check whether logged-in client owns the project
         if (!project.getClient().getId().equals(clientId)) {
+
             throw new ForbiddenException(
                     "You are not allowed to manage applications for this project");
         }
 
         // 3. Project must be OPEN
         if (project.getStatus() != ProjectStatus.OPEN) {
-            throw new RuntimeException(
+
+            throw new BadRequestException(
                     "Applications can only be accepted for open projects");
         }
 
         // 4. Find the application
-        Application application = applicationRepository.findById(applicationId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Application not found"));
+        Application application =
+                applicationRepository.findById(applicationId)
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "Application not found"));
 
         // 5. Make sure application belongs to this project
         if (!application.getProject().getId().equals(projectId)) {
+
             throw new ForbiddenException(
                     "This application does not belong to this project");
         }
 
         // 6. Application must be PENDING
         if (application.getStatus() != ApplicationStatus.PENDING) {
-            throw new RuntimeException(
+
+            throw new BadRequestException(
                     "Only pending applications can be accepted");
         }
 
@@ -208,8 +217,11 @@ public class ApplicationService {
 
             if (!pendingApplication.getId().equals(applicationId)) {
 
-                pendingApplication.setStatus(ApplicationStatus.REJECTED);
-                pendingApplication.setUpdatedAt(LocalDateTime.now());
+                pendingApplication.setStatus(
+                        ApplicationStatus.REJECTED);
+
+                pendingApplication.setUpdatedAt(
+                        LocalDateTime.now());
 
                 applicationRepository.save(pendingApplication);
             }

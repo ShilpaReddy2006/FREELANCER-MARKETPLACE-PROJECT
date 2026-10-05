@@ -24,6 +24,7 @@ public class ApplicationController {
 
         this.applicationService = applicationService;
     }
+    
 
     @PostMapping("/{projectId}/applications")
     public ResponseEntity<ApplicationResponse> applyToProject(
