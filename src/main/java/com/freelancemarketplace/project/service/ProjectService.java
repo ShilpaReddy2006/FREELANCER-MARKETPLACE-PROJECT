@@ -2,7 +2,7 @@ package com.freelancemarketplace.project.service;
 
 import java.time.LocalDateTime;
 import java.util.List;
-
+import com.freelancemarketplace.exception.ForbiddenException;
 import org.springframework.stereotype.Service;
 
 import com.freelancemarketplace.exception.BadRequestException;
@@ -123,6 +123,54 @@ public class ProjectService {
                 project.getStatus(),
                 project.getCreatedAt(),
                 project.getUpdatedAt()
+        );
+    }
+ // Complete project
+    public ProjectResponse completeProject(
+            Long clientId,
+            Long projectId) {
+
+        // 1. Find project
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Project not found"));
+
+        // 2. Check project ownership
+        if (!project.getClient().getId().equals(clientId)) {
+
+            throw new ForbiddenException(
+                    "You are not allowed to complete this project");
+        }
+
+        // 3. Project must be IN_PROGRESS
+        if (project.getStatus() != ProjectStatus.IN_PROGRESS) {
+
+            throw new BadRequestException(
+                    "Only in-progress projects can be completed");
+        }
+
+        // 4. Change status
+        project.setStatus(ProjectStatus.COMPLETED);
+
+        // 5. Update timestamp
+        project.setUpdatedAt(LocalDateTime.now());
+
+        // 6. Save project
+        Project savedProject =
+                projectRepository.save(project);
+
+        // 7. Return response
+        return new ProjectResponse(
+                savedProject.getId(),
+                savedProject.getClient().getId(),
+                savedProject.getTitle(),
+                savedProject.getDescription(),
+                savedProject.getBudget(),
+                savedProject.getDeadline(),
+                savedProject.getStatus(),
+                savedProject.getCreatedAt(),
+                savedProject.getUpdatedAt()
         );
     }
 }
