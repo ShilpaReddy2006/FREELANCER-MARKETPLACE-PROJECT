@@ -14,9 +14,13 @@ public interface ApplicationRepository
             Long projectId,
             Long freelancerId);
 
-    List<Application> findByProjectId(Long projectId);
+    List<Application> findByProjectId(
+            Long projectId);
 
     List<Application> findByProjectIdAndStatus(
             Long projectId,
             ApplicationStatus status);
+
+    List<Application> findByFreelancerId(
+            Long freelancerId);
 }

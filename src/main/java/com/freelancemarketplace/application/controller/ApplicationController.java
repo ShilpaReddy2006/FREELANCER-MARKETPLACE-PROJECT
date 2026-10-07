@@ -80,4 +80,16 @@ public class ApplicationController {
 
         return ResponseEntity.ok(response);
     }
+    @GetMapping("/applications/my")
+    public ResponseEntity<List<ApplicationResponse>> getMyApplications(
+            Authentication authentication) {
+
+        Long freelancerId =
+                (Long) authentication.getPrincipal();
+
+        List<ApplicationResponse> applications =
+                applicationService.getMyApplications(freelancerId);
+
+        return ResponseEntity.ok(applications);
+    }
 }

@@ -243,4 +243,26 @@ public class ApplicationService {
                 savedApplication.getUpdatedAt()
         );
     }
+ // Get applications submitted by logged-in freelancer
+    public List<ApplicationResponse> getMyApplications(
+            Long freelancerId) {
+
+        // 1. Find all applications of this freelancer
+        List<Application> applications =
+                applicationRepository.findByFreelancerId(freelancerId);
+
+        // 2. Convert entities to responses
+        return applications.stream()
+                .map(application -> new ApplicationResponse(
+                        application.getId(),
+                        application.getProject().getId(),
+                        application.getFreelancer().getId(),
+                        application.getProposal(),
+                        application.getProposedBudget(),
+                        application.getStatus(),
+                        application.getCreatedAt(),
+                        application.getUpdatedAt()
+                ))
+                .toList();
+    }
 }
