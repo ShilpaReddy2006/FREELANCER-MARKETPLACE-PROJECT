@@ -1,6 +1,7 @@
 
 package com.freelancemarketplace.contract.controller;
-
+import com.freelancemarketplace.contract.dto.ContractStatusRequest;
+import jakarta.validation.Valid;
 import com.freelancemarketplace.contract.dto.ContractRequest;
 import com.freelancemarketplace.contract.dto.ContractResponse;
 import com.freelancemarketplace.contract.service.ContractService;
@@ -61,4 +62,22 @@ public class ContractController {
 
         return ResponseEntity.ok(contracts);
     }
+
+@PutMapping("/{contractId}/status")
+@PreAuthorize("hasRole('CLIENT')")
+public ResponseEntity<ContractResponse> updateContractStatus(
+        @PathVariable Long contractId,
+        @Valid @RequestBody ContractStatusRequest request,
+        Authentication authentication) {
+
+    Long clientId = (Long) authentication.getPrincipal();
+
+    ContractResponse response =
+            contractService.updateContractStatus(
+                    contractId,
+                    request.getStatus(),
+                    clientId);
+
+    return ResponseEntity.ok(response);
+}
 }

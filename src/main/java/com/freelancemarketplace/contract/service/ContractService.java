@@ -1,6 +1,7 @@
 
 package com.freelancemarketplace.contract.service;
-
+import com.freelancemarketplace.contract.dto.ContractStatusRequest;
+import org.springframework.transaction.annotation.Transactional;
 import com.freelancemarketplace.application.entity.Application;
 import com.freelancemarketplace.application.entity.ApplicationStatus;
 import com.freelancemarketplace.application.repository.ApplicationRepository;
@@ -109,6 +110,41 @@ public class ContractService {
                 .map(this::mapToResponse)
                 .toList();
     }
+
+@Transactional
+public ContractResponse updateContractStatus(
+        Long contractId,
+        ContractStatus newStatus,
+        Long clientId) {
+
+    Contract contract = contractRepository.findById(contractId)
+            .orElseThrow(() ->
+                    new ResourceNotFoundException("Contract not found"));
+
+    // Only the contract's client can update its status
+    if (!contract.getClient().getId().equals(clientId)) {
+        throw new ForbiddenException(
+                "Only the contract owner can update its status");
+    }
+
+    // Only ACTIVE contracts can be completed or cancelled
+    if (contract.getStatus() != ContractStatus.ACTIVE) {
+        throw new BadRequestException(
+                "Only active contracts can be updated");
+    }
+
+    if (newStatus != ContractStatus.COMPLETED
+            && newStatus != ContractStatus.CANCELLED) {
+        throw new BadRequestException(
+                "Allowed statuses are COMPLETED and CANCELLED");
+    }
+
+    contract.setStatus(newStatus);
+
+    Contract updatedContract = contractRepository.save(contract);
+
+    return mapToResponse(updatedContract);
+}
 
     // Convert Contract entity into response DTO
     private ContractResponse mapToResponse(Contract contract) {
