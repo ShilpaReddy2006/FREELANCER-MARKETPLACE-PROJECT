@@ -1,10 +1,12 @@
+
 package com.freelancemarketplace.contract.repository;
 
 import com.freelancemarketplace.contract.entity.Contract;
+import com.freelancemarketplace.contract.entity.ContractStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
 import java.util.Optional;
-import com.freelancemarketplace.contract.entity.ContractStatus;
 
 public interface ContractRepository extends JpaRepository<Contract, Long> {
 
@@ -14,4 +16,8 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
             Long projectId,
             ContractStatus status
     );
+
+    List<Contract> findByClientId(Long clientId);
+
+    List<Contract> findByFreelancerId(Long freelancerId);
 }

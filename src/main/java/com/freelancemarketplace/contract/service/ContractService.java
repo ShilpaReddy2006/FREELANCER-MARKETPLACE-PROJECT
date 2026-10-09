@@ -1,3 +1,4 @@
+
 package com.freelancemarketplace.contract.service;
 
 import com.freelancemarketplace.application.entity.Application;
@@ -15,6 +16,8 @@ import com.freelancemarketplace.exception.ResourceNotFoundException;
 import com.freelancemarketplace.user.entity.User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 public class ContractService {
@@ -35,29 +38,24 @@ public class ContractService {
             ContractRequest request,
             Long clientId) {
 
-        // 1. Find the application
         Application application =
                 applicationRepository.findById(request.getApplicationId())
                         .orElseThrow(() ->
                                 new ResourceNotFoundException(
                                         "Application not found"));
 
-        // 2. Application must be ACCEPTED
         if (application.getStatus() != ApplicationStatus.ACCEPTED) {
             throw new BadRequestException(
                     "Contract can only be created from an accepted application");
         }
 
-        // 3. Get the project
         var project = application.getProject();
 
-        // 4. Verify that logged-in user owns the project
         if (!project.getClient().getId().equals(clientId)) {
             throw new ForbiddenException(
                     "Only the project owner can create a contract");
         }
 
-        // 5. Check if project already has an active contract
         if (contractRepository.existsByProjectIdAndStatus(
                 project.getId(),
                 ContractStatus.ACTIVE)) {
@@ -66,50 +64,67 @@ public class ContractService {
                     "Project already has an active contract");
         }
 
-        // 6. Validate dates
         if (request.getEndDate().isBefore(request.getStartDate())) {
             throw new BadRequestException(
                     "End date cannot be before start date");
         }
 
-        // 7. Get client and freelancer
         User client = project.getClient();
         User freelancer = application.getFreelancer();
 
-        // 8. Create contract
         Contract contract = new Contract();
 
         contract.setApplication(application);
         contract.setProject(project);
         contract.setClient(client);
         contract.setFreelancer(freelancer);
-
-        // Use the accepted application's proposed budget
-        contract.setAgreedAmount(
-                application.getProposedBudget());
-
+        contract.setAgreedAmount(application.getProposedBudget());
         contract.setStartDate(request.getStartDate());
         contract.setEndDate(request.getEndDate());
-
         contract.setStatus(ContractStatus.ACTIVE);
 
-        // 9. Save contract
-        Contract savedContract =
-                contractRepository.save(contract);
+        Contract savedContract = contractRepository.save(contract);
 
-        // 10. Convert entity to response
+        return mapToResponse(savedContract);
+    }
+
+    // Get contracts belonging to the logged-in user
+    @Transactional(readOnly = true)
+    public List<ContractResponse> getMyContracts(
+            Long userId,
+            String role) {
+
+        List<Contract> contracts;
+
+        if ("CLIENT".equals(role)) {
+            contracts = contractRepository.findByClientId(userId);
+        } else if ("FREELANCER".equals(role)) {
+            contracts = contractRepository.findByFreelancerId(userId);
+        } else {
+            throw new ForbiddenException(
+                    "Only clients and freelancers can view contracts");
+        }
+
+        return contracts.stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+    // Convert Contract entity into response DTO
+    private ContractResponse mapToResponse(Contract contract) {
+
         return new ContractResponse(
-                savedContract.getId(),
-                savedContract.getProject().getId(),
-                savedContract.getApplication().getId(),
-                savedContract.getClient().getId(),
-                savedContract.getFreelancer().getId(),
-                savedContract.getAgreedAmount(),
-                savedContract.getStartDate(),
-                savedContract.getEndDate(),
-                savedContract.getStatus(),
-                savedContract.getCreatedAt(),
-                savedContract.getUpdatedAt()
+                contract.getId(),
+                contract.getProject().getId(),
+                contract.getApplication().getId(),
+                contract.getClient().getId(),
+                contract.getFreelancer().getId(),
+                contract.getAgreedAmount(),
+                contract.getStartDate(),
+                contract.getEndDate(),
+                contract.getStatus(),
+                contract.getCreatedAt(),
+                contract.getUpdatedAt()
         );
     }
 }
