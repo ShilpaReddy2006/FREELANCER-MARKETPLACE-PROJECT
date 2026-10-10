@@ -1,12 +1,17 @@
 
 package com.freelancemarketplace.contract.service;
-import com.freelancemarketplace.contract.dto.ContractStatusRequest;
+
+import java.util.List;
+
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import com.freelancemarketplace.application.entity.Application;
 import com.freelancemarketplace.application.entity.ApplicationStatus;
 import com.freelancemarketplace.application.repository.ApplicationRepository;
 import com.freelancemarketplace.contract.dto.ContractRequest;
 import com.freelancemarketplace.contract.dto.ContractResponse;
+import com.freelancemarketplace.contract.dto.ContractStatusRequest;
 import com.freelancemarketplace.contract.entity.Contract;
 import com.freelancemarketplace.contract.entity.ContractStatus;
 import com.freelancemarketplace.contract.repository.ContractRepository;
@@ -14,26 +19,27 @@ import com.freelancemarketplace.exception.BadRequestException;
 import com.freelancemarketplace.exception.ForbiddenException;
 import com.freelancemarketplace.exception.ResourceAlreadyExistsException;
 import com.freelancemarketplace.exception.ResourceNotFoundException;
+import com.freelancemarketplace.notification.service.NotificationService;
 import com.freelancemarketplace.user.entity.User;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 public class ContractService {
 
     private final ContractRepository contractRepository;
     private final ApplicationRepository applicationRepository;
+    private final NotificationService notificationService;
 
     public ContractService(
             ContractRepository contractRepository,
-            ApplicationRepository applicationRepository) {
+            ApplicationRepository applicationRepository,
+            NotificationService notificationService) {
 
         this.contractRepository = contractRepository;
         this.applicationRepository = applicationRepository;
+        this.notificationService = notificationService;
     }
 
+    // Create a contract from an accepted application.
     @Transactional
     public ContractResponse createContract(
             ContractRequest request,
@@ -58,8 +64,7 @@ public class ContractService {
         }
 
         if (contractRepository.existsByProjectIdAndStatus(
-                project.getId(),
-                ContractStatus.ACTIVE)) {
+                project.getId(), ContractStatus.ACTIVE)) {
 
             throw new ResourceAlreadyExistsException(
                     "Project already has an active contract");
@@ -74,7 +79,6 @@ public class ContractService {
         User freelancer = application.getFreelancer();
 
         Contract contract = new Contract();
-
         contract.setApplication(application);
         contract.setProject(project);
         contract.setClient(client);
@@ -86,10 +90,20 @@ public class ContractService {
 
         Contract savedContract = contractRepository.save(contract);
 
+        // Notify the freelancer.
+        notificationService.createNotification(
+                savedContract.getFreelancer().getId(),
+                "Contract Created",
+                "A contract has been created for project '"
+                        + savedContract.getProject().getTitle()
+                        + "'.",
+                "CONTRACT_CREATED"
+        );
+
         return mapToResponse(savedContract);
     }
 
-    // Get contracts belonging to the logged-in user
+    // Get contracts belonging to the logged-in user.
     @Transactional(readOnly = true)
     public List<ContractResponse> getMyContracts(
             Long userId,
@@ -111,42 +125,41 @@ public class ContractService {
                 .toList();
     }
 
-@Transactional
-public ContractResponse updateContractStatus(
-        Long contractId,
-        ContractStatus newStatus,
-        Long clientId) {
+    // Update contract status.
+    @Transactional
+    public ContractResponse updateContractStatus(
+            Long contractId,
+            ContractStatus newStatus,
+            Long clientId) {
 
-    Contract contract = contractRepository.findById(contractId)
-            .orElseThrow(() ->
-                    new ResourceNotFoundException("Contract not found"));
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Contract not found"));
 
-    // Only the contract's client can update its status
-    if (!contract.getClient().getId().equals(clientId)) {
-        throw new ForbiddenException(
-                "Only the contract owner can update its status");
+        if (!contract.getClient().getId().equals(clientId)) {
+            throw new ForbiddenException(
+                    "Only the contract owner can update its status");
+        }
+
+        if (contract.getStatus() != ContractStatus.ACTIVE) {
+            throw new BadRequestException(
+                    "Only active contracts can be updated");
+        }
+
+        if (newStatus != ContractStatus.COMPLETED
+                && newStatus != ContractStatus.CANCELLED) {
+            throw new BadRequestException(
+                    "Allowed statuses are COMPLETED and CANCELLED");
+        }
+
+        contract.setStatus(newStatus);
+
+        Contract updatedContract = contractRepository.save(contract);
+
+        return mapToResponse(updatedContract);
     }
 
-    // Only ACTIVE contracts can be completed or cancelled
-    if (contract.getStatus() != ContractStatus.ACTIVE) {
-        throw new BadRequestException(
-                "Only active contracts can be updated");
-    }
-
-    if (newStatus != ContractStatus.COMPLETED
-            && newStatus != ContractStatus.CANCELLED) {
-        throw new BadRequestException(
-                "Allowed statuses are COMPLETED and CANCELLED");
-    }
-
-    contract.setStatus(newStatus);
-
-    Contract updatedContract = contractRepository.save(contract);
-
-    return mapToResponse(updatedContract);
-}
-
-    // Convert Contract entity into response DTO
+    // Convert Contract entity into response DTO.
     private ContractResponse mapToResponse(Contract contract) {
 
         return new ContractResponse(

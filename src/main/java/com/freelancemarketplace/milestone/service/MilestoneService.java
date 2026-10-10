@@ -12,6 +12,7 @@ import com.freelancemarketplace.milestone.dto.MilestoneResponse;
 import com.freelancemarketplace.milestone.entity.Milestone;
 import com.freelancemarketplace.milestone.entity.MilestoneStatus;
 import com.freelancemarketplace.milestone.repository.MilestoneRepository;
+import com.freelancemarketplace.notification.service.NotificationService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,13 +23,16 @@ public class MilestoneService {
 
     private final MilestoneRepository milestoneRepository;
     private final ContractRepository contractRepository;
+    private final NotificationService notificationService;
 
     public MilestoneService(
             MilestoneRepository milestoneRepository,
-            ContractRepository contractRepository) {
+            ContractRepository contractRepository,
+            NotificationService notificationService) {
 
         this.milestoneRepository = milestoneRepository;
         this.contractRepository = contractRepository;
+        this.notificationService = notificationService;
     }
 
     @Transactional
@@ -135,6 +139,11 @@ public class MilestoneService {
                     "You are not the freelancer for this contract");
         }
 
+        if (!"CLIENT".equals(role) && !"FREELANCER".equals(role)) {
+            throw new ForbiddenException(
+                    "You are not authorized to update milestone status");
+        }
+
         if (newStatus == null) {
             throw new BadRequestException("Milestone status is required");
         }
@@ -164,7 +173,40 @@ public class MilestoneService {
 
         milestone.setStatus(newStatus);
 
-        return mapToResponse(milestoneRepository.save(milestone));
+        Milestone savedMilestone = milestoneRepository.save(milestone);
+
+        // Notify the freelancer when the client reviews the milestone.
+        if ("CLIENT".equals(role)
+                && (newStatus == MilestoneStatus.APPROVED
+                || newStatus == MilestoneStatus.REJECTED)) {
+
+            String title;
+            String message;
+            String type;
+
+            if (newStatus == MilestoneStatus.APPROVED) {
+                title = "Milestone Approved";
+                message = "Your milestone '"
+                        + savedMilestone.getTitle()
+                        + "' has been approved.";
+                type = "MILESTONE_APPROVED";
+            } else {
+                title = "Milestone Rejected";
+                message = "Your milestone '"
+                        + savedMilestone.getTitle()
+                        + "' has been rejected. Please review it and make the necessary changes.";
+                type = "MILESTONE_REJECTED";
+            }
+
+            notificationService.createNotification(
+                    contract.getFreelancer().getId(),
+                    title,
+                    message,
+                    type
+            );
+        }
+
+        return mapToResponse(savedMilestone);
     }
 
     private MilestoneResponse mapToResponse(Milestone milestone) {

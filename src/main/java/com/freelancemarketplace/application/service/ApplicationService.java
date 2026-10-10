@@ -1,3 +1,4 @@
+
 package com.freelancemarketplace.application.service;
 
 import java.time.LocalDateTime;
@@ -15,6 +16,7 @@ import com.freelancemarketplace.exception.BadRequestException;
 import com.freelancemarketplace.exception.ForbiddenException;
 import com.freelancemarketplace.exception.ResourceAlreadyExistsException;
 import com.freelancemarketplace.exception.ResourceNotFoundException;
+import com.freelancemarketplace.notification.service.NotificationService;
 import com.freelancemarketplace.project.entity.Project;
 import com.freelancemarketplace.project.entity.ProjectStatus;
 import com.freelancemarketplace.project.repository.ProjectRepository;
@@ -28,241 +30,207 @@ public class ApplicationService {
     private final ApplicationRepository applicationRepository;
     private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     public ApplicationService(
             ApplicationRepository applicationRepository,
             ProjectRepository projectRepository,
-            UserRepository userRepository) {
+            UserRepository userRepository,
+            NotificationService notificationService) {
 
         this.applicationRepository = applicationRepository;
         this.projectRepository = projectRepository;
         this.userRepository = userRepository;
+        this.notificationService = notificationService;
     }
 
     // Freelancer applies to a project
+    @Transactional
     public ApplicationResponse applyToProject(
             Long freelancerId,
             Long projectId,
             ApplicationRequest request) {
 
-        // 1. Find freelancer
         User freelancer = userRepository.findById(freelancerId)
                 .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Freelancer not found"));
+                        new ResourceNotFoundException("Freelancer not found"));
 
-        // 2. Check freelancer role
         if (freelancer.getRole() != Role.FREELANCER) {
-
             throw new BadRequestException(
                     "Only freelancers can apply to projects");
         }
 
-        // 3. Find project
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Project not found"));
+                        new ResourceNotFoundException("Project not found"));
 
-        // 4. Project must be OPEN
         if (project.getStatus() != ProjectStatus.OPEN) {
-
             throw new BadRequestException(
                     "Applications are allowed only for open projects");
         }
 
-        // 5. Check duplicate application
-        if (applicationRepository
-                .existsByProjectIdAndFreelancerId(
-                        projectId,
-                        freelancerId)) {
-
+        if (applicationRepository.existsByProjectIdAndFreelancerId(
+                projectId, freelancerId)) {
             throw new ResourceAlreadyExistsException(
                     "You have already applied to this project");
         }
 
-        // 6. Create application
         Application application = new Application();
-
         application.setProject(project);
         application.setFreelancer(freelancer);
         application.setProposal(request.getProposal());
-        application.setProposedBudget(
-                request.getProposedBudget());
-
-        // 7. Default status
+        application.setProposedBudget(request.getProposedBudget());
         application.setStatus(ApplicationStatus.PENDING);
 
-        // 8. Timestamps
         LocalDateTime now = LocalDateTime.now();
-
         application.setCreatedAt(now);
         application.setUpdatedAt(now);
 
-        // 9. Save
         Application savedApplication =
                 applicationRepository.save(application);
 
-        // 10. Return response
-        return new ApplicationResponse(
-                savedApplication.getId(),
-                savedApplication.getProject().getId(),
-                savedApplication.getFreelancer().getId(),
-                savedApplication.getProposal(),
-                savedApplication.getProposedBudget(),
-                savedApplication.getStatus(),
-                savedApplication.getCreatedAt(),
-                savedApplication.getUpdatedAt()
+        // Notify the project owner.
+        notificationService.createNotification(
+                project.getClient().getId(),
+                "New Application",
+                "A freelancer has applied to your project: "
+                        + project.getTitle(),
+                "NEW_APPLICATION"
         );
+
+        return mapToResponse(savedApplication);
     }
 
     // Client views applications for their project
+    @Transactional(readOnly = true)
     public List<ApplicationResponse> getApplicationsForProject(
             Long clientId,
             Long projectId) {
 
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Project not found"));
+                        new ResourceNotFoundException("Project not found"));
 
         if (!project.getClient().getId().equals(clientId)) {
-
             throw new ForbiddenException(
                     "You are not allowed to view applications for this project");
         }
 
-        List<Application> applications =
-                applicationRepository.findByProjectId(projectId);
-
-        return applications.stream()
-                .map(application -> new ApplicationResponse(
-                        application.getId(),
-                        application.getProject().getId(),
-                        application.getFreelancer().getId(),
-                        application.getProposal(),
-                        application.getProposedBudget(),
-                        application.getStatus(),
-                        application.getCreatedAt(),
-                        application.getUpdatedAt()
-                ))
+        return applicationRepository.findByProjectId(projectId)
+                .stream()
+                .map(this::mapToResponse)
                 .toList();
     }
 
-    // Client accepts an application
+    // Client accepts one application and rejects other pending applications.
     @Transactional
     public ApplicationResponse acceptApplication(
             Long clientId,
             Long projectId,
             Long applicationId) {
 
-        // 1. Find the project
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Project not found"));
+                        new ResourceNotFoundException("Project not found"));
 
-        // 2. Check whether logged-in client owns the project
         if (!project.getClient().getId().equals(clientId)) {
-
             throw new ForbiddenException(
                     "You are not allowed to manage applications for this project");
         }
 
-        // 3. Project must be OPEN
         if (project.getStatus() != ProjectStatus.OPEN) {
-
             throw new BadRequestException(
                     "Applications can only be accepted for open projects");
         }
 
-        // 4. Find the application
-        Application application =
-                applicationRepository.findById(applicationId)
-                        .orElseThrow(() ->
-                                new ResourceNotFoundException(
-                                        "Application not found"));
+        Application application = applicationRepository.findById(applicationId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Application not found"));
 
-        // 5. Make sure application belongs to this project
         if (!application.getProject().getId().equals(projectId)) {
-
             throw new ForbiddenException(
                     "This application does not belong to this project");
         }
 
-        // 6. Application must be PENDING
         if (application.getStatus() != ApplicationStatus.PENDING) {
-
             throw new BadRequestException(
                     "Only pending applications can be accepted");
         }
 
-        // 7. Accept selected application
+        // Accept the selected application.
         application.setStatus(ApplicationStatus.ACCEPTED);
         application.setUpdatedAt(LocalDateTime.now());
 
-        // 8. Project becomes IN_PROGRESS
+        // Project becomes IN_PROGRESS.
         project.setStatus(ProjectStatus.IN_PROGRESS);
         project.setUpdatedAt(LocalDateTime.now());
-
         projectRepository.save(project);
 
-        // 9. Reject all other pending applications
+        // Reject other pending applications and notify each freelancer.
         List<Application> pendingApplications =
                 applicationRepository.findByProjectIdAndStatus(
-                        projectId,
-                        ApplicationStatus.PENDING);
+                        projectId, ApplicationStatus.PENDING);
 
         for (Application pendingApplication : pendingApplications) {
 
             if (!pendingApplication.getId().equals(applicationId)) {
 
-                pendingApplication.setStatus(
-                        ApplicationStatus.REJECTED);
+                pendingApplication.setStatus(ApplicationStatus.REJECTED);
+                pendingApplication.setUpdatedAt(LocalDateTime.now());
 
-                pendingApplication.setUpdatedAt(
-                        LocalDateTime.now());
+                Application rejectedApplication =
+                        applicationRepository.save(pendingApplication);
 
-                applicationRepository.save(pendingApplication);
+                notificationService.createNotification(
+                        rejectedApplication.getFreelancer().getId(),
+                        "Application Rejected",
+                        "Your application for project '"
+                                + project.getTitle()
+                                + "' was not selected.",
+                        "APPLICATION_REJECTED"
+                );
             }
         }
 
-        // 10. Save accepted application
         Application savedApplication =
                 applicationRepository.save(application);
 
-        // 11. Return response
-        return new ApplicationResponse(
-                savedApplication.getId(),
-                savedApplication.getProject().getId(),
+        // Notify the selected freelancer.
+        notificationService.createNotification(
                 savedApplication.getFreelancer().getId(),
-                savedApplication.getProposal(),
-                savedApplication.getProposedBudget(),
-                savedApplication.getStatus(),
-                savedApplication.getCreatedAt(),
-                savedApplication.getUpdatedAt()
+                "Application Accepted",
+                "Your application for project '"
+                        + project.getTitle()
+                        + "' has been accepted.",
+                "APPLICATION_ACCEPTED"
         );
+
+        return mapToResponse(savedApplication);
     }
- // Get applications submitted by logged-in freelancer
+
+    // Freelancer views their own applications.
+    @Transactional(readOnly = true)
     public List<ApplicationResponse> getMyApplications(
             Long freelancerId) {
 
-        // 1. Find all applications of this freelancer
-        List<Application> applications =
-                applicationRepository.findByFreelancerId(freelancerId);
-
-        // 2. Convert entities to responses
-        return applications.stream()
-                .map(application -> new ApplicationResponse(
-                        application.getId(),
-                        application.getProject().getId(),
-                        application.getFreelancer().getId(),
-                        application.getProposal(),
-                        application.getProposedBudget(),
-                        application.getStatus(),
-                        application.getCreatedAt(),
-                        application.getUpdatedAt()
-                ))
+        return applicationRepository.findByFreelancerId(freelancerId)
+                .stream()
+                .map(this::mapToResponse)
                 .toList();
+    }
+
+    // Convert Application entity into response DTO.
+    private ApplicationResponse mapToResponse(Application application) {
+
+        return new ApplicationResponse(
+                application.getId(),
+                application.getProject().getId(),
+                application.getFreelancer().getId(),
+                application.getProposal(),
+                application.getProposedBudget(),
+                application.getStatus(),
+                application.getCreatedAt(),
+                application.getUpdatedAt()
+        );
     }
 }
