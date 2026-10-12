@@ -11,7 +11,6 @@ import com.freelancemarketplace.application.entity.ApplicationStatus;
 import com.freelancemarketplace.application.repository.ApplicationRepository;
 import com.freelancemarketplace.contract.dto.ContractRequest;
 import com.freelancemarketplace.contract.dto.ContractResponse;
-import com.freelancemarketplace.contract.dto.ContractStatusRequest;
 import com.freelancemarketplace.contract.entity.Contract;
 import com.freelancemarketplace.contract.entity.ContractStatus;
 import com.freelancemarketplace.contract.repository.ContractRepository;
@@ -51,18 +50,29 @@ public class ContractService {
                                 new ResourceNotFoundException(
                                         "Application not found"));
 
-        if (application.getStatus() != ApplicationStatus.ACCEPTED) {
-            throw new BadRequestException(
-                    "Contract can only be created from an accepted application");
-        }
-
         var project = application.getProject();
 
+        // Only the owner of the project can create its contract.
         if (!project.getClient().getId().equals(clientId)) {
             throw new ForbiddenException(
                     "Only the project owner can create a contract");
         }
 
+        // Prevent duplicate contracts for the same application.
+        if (contractRepository.existsByApplicationId(
+                application.getId())) {
+
+            throw new ResourceAlreadyExistsException(
+                    "A contract already exists for this application");
+        }
+
+        // Contracts can only be created from accepted applications.
+        if (application.getStatus() != ApplicationStatus.ACCEPTED) {
+            throw new BadRequestException(
+                    "Contract can only be created from an accepted application");
+        }
+
+        // A project cannot have more than one active contract.
         if (contractRepository.existsByProjectIdAndStatus(
                 project.getId(), ContractStatus.ACTIVE)) {
 
@@ -70,6 +80,7 @@ public class ContractService {
                     "Project already has an active contract");
         }
 
+        // Validate contract dates.
         if (request.getEndDate().isBefore(request.getStartDate())) {
             throw new BadRequestException(
                     "End date cannot be before start date");
@@ -90,15 +101,14 @@ public class ContractService {
 
         Contract savedContract = contractRepository.save(contract);
 
-        // Notify the freelancer.
+        // Notify the freelancer that the contract was created.
         notificationService.createNotification(
                 savedContract.getFreelancer().getId(),
                 "Contract Created",
                 "A contract has been created for project '"
                         + savedContract.getProject().getTitle()
                         + "'.",
-                "CONTRACT_CREATED"
-        );
+                "CONTRACT_CREATED");
 
         return mapToResponse(savedContract);
     }
@@ -148,6 +158,7 @@ public class ContractService {
 
         if (newStatus != ContractStatus.COMPLETED
                 && newStatus != ContractStatus.CANCELLED) {
+
             throw new BadRequestException(
                     "Allowed statuses are COMPLETED and CANCELLED");
         }
@@ -173,7 +184,6 @@ public class ContractService {
                 contract.getEndDate(),
                 contract.getStatus(),
                 contract.getCreatedAt(),
-                contract.getUpdatedAt()
-        );
+                contract.getUpdatedAt());
     }
 }

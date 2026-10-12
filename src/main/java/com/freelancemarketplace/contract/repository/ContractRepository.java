@@ -1,23 +1,26 @@
 
 package com.freelancemarketplace.contract.repository;
 
+import java.util.List;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
 import com.freelancemarketplace.contract.entity.Contract;
 import com.freelancemarketplace.contract.entity.ContractStatus;
-import org.springframework.data.jpa.repository.JpaRepository;
 
-import java.util.List;
-import java.util.Optional;
-
+@Repository
 public interface ContractRepository extends JpaRepository<Contract, Long> {
-
-    Optional<Contract> findByApplicationId(Long applicationId);
-
-    boolean existsByProjectIdAndStatus(
-            Long projectId,
-            ContractStatus status
-    );
 
     List<Contract> findByClientId(Long clientId);
 
     List<Contract> findByFreelancerId(Long freelancerId);
+
+    List<Contract> findByApplicationId(Long applicationId);
+
+    boolean existsByApplicationId(Long applicationId);
+
+    boolean existsByProjectIdAndStatus(
+            Long projectId,
+            ContractStatus status);
 }
