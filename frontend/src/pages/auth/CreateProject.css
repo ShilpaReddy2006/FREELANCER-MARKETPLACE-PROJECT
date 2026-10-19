@@ -1,0 +1,226 @@
+
+.create-project-page {
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 28px;
+  color: var(--text-primary, #1f2937);
+}
+
+.create-project-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 28px;
+}
+
+.create-project-eyebrow {
+  margin: 0 0 8px;
+  color: #6366f1;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+}
+
+.create-project-heading h1 {
+  margin: 0;
+  font-size: clamp(26px, 4vw, 34px);
+  font-weight: 750;
+}
+
+.create-project-subtitle {
+  margin: 10px 0 0;
+  color: var(--text-secondary, #6b7280);
+  line-height: 1.6;
+}
+
+.create-project-form {
+  padding: 28px;
+  background: var(--card-bg, #ffffff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 16px;
+  box-shadow: 0 8px 28px rgb(15 23 42 / 5%);
+}
+
+.create-project-form-heading {
+  margin-bottom: 26px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+}
+
+.create-project-form-heading h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.create-project-form-heading p {
+  margin: 7px 0 0;
+  color: var(--text-secondary, #6b7280);
+  font-size: 13px;
+}
+
+.project-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 22px;
+}
+
+.project-form-field label {
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.project-form-field input,
+.project-form-field textarea {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 13px 14px;
+  color: var(--text-primary, #1f2937);
+  background: var(--input-bg, #ffffff);
+  border: 1px solid var(--border-color, #d1d5db);
+  border-radius: 9px;
+  outline: none;
+  font: inherit;
+  font-size: 14px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.project-form-field textarea {
+  resize: vertical;
+  min-height: 140px;
+  line-height: 1.6;
+}
+
+.project-form-field input:focus,
+.project-form-field textarea:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgb(99 102 241 / 13%);
+}
+
+.project-form-field input::placeholder,
+.project-form-field textarea::placeholder {
+  color: #9ca3af;
+}
+
+.project-form-row {
+  display: flex;
+  gap: 20px;
+}
+
+.project-character-count {
+  align-self: flex-end;
+  color: var(--text-secondary, #6b7280);
+  font-size: 12px;
+}
+
+.create-project-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px;
+  margin: 4px 0 24px;
+  background: var(--note-bg, #f5f7ff);
+  border-radius: 9px;
+  color: var(--text-secondary, #4b5563);
+}
+
+.create-project-note-icon {
+  color: #6366f1;
+  font-size: 18px;
+}
+
+.create-project-note p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.create-project-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-color, #e5e7eb);
+}
+
+.project-cancel-button,
+.project-submit-button {
+  min-height: 44px;
+  padding: 0 20px;
+  border-radius: 9px;
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.project-cancel-button {
+  color: var(--text-primary, #374151);
+  background: transparent;
+  border: 1px solid var(--border-color, #d1d5db);
+}
+
+.project-submit-button {
+  color: #ffffff;
+  background: #4f46e5;
+  border: 1px solid #4f46e5;
+}
+
+.project-submit-button:hover,
+.project-cancel-button:hover {
+  transform: translateY(-1px);
+}
+
+.project-submit-button:disabled,
+.project-cancel-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.project-message {
+  padding: 12px 14px;
+  margin-bottom: 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.project-error {
+  color: #b91c1c;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+}
+
+.project-success {
+  color: #166534;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+}
+
+@media (max-width: 640px) {
+  .create-project-page {
+    padding: 18px 12px;
+  }
+
+  .create-project-form {
+    padding: 20px 16px;
+  }
+
+  .project-form-row {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .create-project-actions {
+    flex-direction: column-reverse;
+  }
+
+  .project-cancel-button,
+  .project-submit-button {
+    width: 100%;
+  }
+}

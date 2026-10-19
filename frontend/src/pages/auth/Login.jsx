@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import axiosInstance from "../../api/AxiosInstance";
+import axiosInstance from "../../api/axiosInstance";
 import "../../styles/auth.css";
 
 export default function Login() {
